@@ -1,92 +1,98 @@
 # BankruptcyWatch Coding Challenge
 
-> [!NOTE]
-> The coding challenge is now closed. We would like to thank everyone who
-> took the time to submit a solution!
+import argparse
+import json
+import sys
+import xml.etree.ElementTree as ET
 
-## Goal
+def parse_xml(file_path):
+    addresses = []
+    tree = ET.parse(file_path)
+    root = tree.getroot()
+    for record in root.findall('.//record'):
+        address = {}
+        for field in record:
+            tag = field.tag.lower()
+            if tag == 'name':
+                address['name'] = field.text
+            elif tag == 'organization':
+                address['organization'] = field.text
+            elif tag == 'street':
+                address['street'] = field.text
+            elif tag == 'city':
+                address['city'] = field.text
+            elif tag == 'county':
+                address['county'] = field.text
+            elif tag == 'state':
+                address['state'] = field.text
+            elif tag == 'zip':
+                address['zip'] = field.text
+        addresses.append(address)
+    return addresses
 
-The BankruptcyWatch Coding Challenge is designed to help us locate experienced
-developers who are proficient in the Python language and in developing at Github
-and who are able to write clean, correct, and reliable code.
+# Implement parse_tsv and parse_txt functions similarly
 
-## The Challenge
+def parse_tsv(file_path):
+    addresses = []
+    with open(file_path, 'r') as file:
+        for line in file:
+            fields = line.strip().split('\t')
+            address = {
+                'organization': fields[0],
+                'street': fields[1],
+                'city': fields[2],
+                'state': fields[3],
+                'zip': fields[4]
+            }
+            addresses.append(address)
+    return addresses
 
-The directory [`input`](input) contains three files each containing a list of US
-names and addresses:
+def parse_txt(file_path):
+    addresses = []
+    with open(file_path, 'r') as file:
+        for line in file:
+            fields = line.strip().split(',')
+            address = {
+                'name': fields[0],
+                'street': fields[1],
+                'city': fields[2],
+                'county': fields[3],
+                'state': fields[4],
+                'zip': fields[5]
+            }
+            addresses.append(address)
+    return addresses
 
-* [`input1.xml`](input/input1.xml)
-* [`input2.tsv`](input/input2.tsv)
-* [`input3.txt`](input/input3.txt)
+# Implement the main function to orchestrate parsing and output
 
-The file formats are not documented, but you can deduce the formats by examing
-their contents. The challenge is to write a python script `challenge.py`,
-desgined to be run from the command line, that accepts a list of pathnames of
-files in any of the above formats, parses them, and writes a JSON-encoded list
-of the combined addresses to standard output, sorted by ZIP code in ascending order. You can assume
-that the the format of each file corresponds to its extension, as illustrated by
-the above examples. Your submission should consist of a single file, without any
-supporting documents. The output should be a pretty-printed JSON array of JSON
-objects, each having 5 or 6 properties, serialized in the given order:
+def main():
+    parser = argparse.ArgumentParser(description='Process some files.')
+    parser.add_argument('files', nargs='+', help='list of file paths')
+    args = parser.parse_args()
 
-* `name`: The person's full name, if present, consisting of a list of one or more given names followed by the family name
-* `organization`: The company or organization name, if present
-* `street`: The street address, often just a house number followed by a direction indicator and a street name
-* `city`: The city name
-* `county:` The county name, if present
-* `state`: The US state name or abbreviation
-* `zip`: The ZIP code or ZIP+4, in the format 00000 or 00000-0000
+    if not args.files:
+        sys.stderr.write("Error: No files provided.\n")
+        sys.exit(1)
 
-A personal name or organization name will always be present, but not both.
+    addresses = []
+    for file_path in args.files:
+        try:
+            if file_path.endswith('.xml'):
+                addresses.extend(parse_xml(file_path))
+            elif file_path.endswith('.tsv'):
+                addresses.extend(parse_tsv(file_path))
+            elif file_path.endswith('.txt'):
+                addresses.extend(parse_txt(file_path))
+            else:
+                sys.stderr.write(f"Error: Unsupported file format: {file_path}\n")
+                sys.exit(1)
+        except Exception as e:
+            sys.stderr.write(f"Error processing file {file_path}: {str(e)}\n")
+            sys.exit(1)
 
-Here is a sample output:
+    addresses.sort(key=lambda x: x.get('zip', ''))
+    print(json.dumps(addresses, indent=2))
 
-```
-[
-  {
-    "name": "Hilda Flores",
-    "street": "1509 Alberbrook Pl",
-    "city": "Garland",
-    "county": "DALLAS",
-    "state": "TX",
-    "zip": "75040"
-  },
-  {
-    "organization": "Central Trading Company Ltd.",
-    "street": "1501 North Division Street",
-    "city": "Plainfield",
-    "state": "Illinois",
-    "zip": "60544-3890"
-  }
-]
-```
+if __name__ == "__main__":
+    main()
 
-The script should
-
-* Be well-organized and easy to understand
-* Use only standard Python libraries
-* Be compatible with Python 3.11
-* Conform to [PEP 8](https://peps.python.org/pep-0008/)
-* Provide a `--help` option
-* Check for errors in the argument list
-* Check the input files to make sure they conform to the formats expemplified by the sample files
-* Output a list of addresses only if no errors were discovered in the above two steps
-* Write any error messages to stderr
-* Exit with status `0` or `1` to indicate success or failure
-
-> [!WARNING]
-> Study the data carefully: it's not as easy as it looks.
-
-## Timing
-
-You should submit your solution within 24 hours of beginning to work on the
-challenge.
-
-## Submitting Your Solution
-
-To Submit your solution, fork this repository and submit a pull request. It
-should consist of a single commit with a concise commit message.
-
----
-
-Copyright &copy; 2024 BankruptcyWatch, LLC
